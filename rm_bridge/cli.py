@@ -104,7 +104,7 @@ def connect() -> None:
 @click.argument("code")
 @click.option("--token-path", default=None, help="Custom token storage path.")
 def connect_register(code: str, token_path: str | None) -> None:
-    """Register with a one-time code from my.remarkable.com/connect/desktop."""
+    """Register with a one-time code from my.remarkable.com/device/desktop/connect."""
     rm = ReMarkable.from_connect(Path(token_path) if token_path else None)
     rm.register(code)
     click.echo("Device registered. Run 'rm-bridge connect list' to verify.")

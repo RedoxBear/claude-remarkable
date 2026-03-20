@@ -1,7 +1,7 @@
 """Remarkable Connect cloud transport — device registration, token management, document API.
 
 Auth flow:
-  1. User visits https://my.remarkable.com/connect/desktop
+  1. User visits https://my.remarkable.com/device/desktop/connect
   2. User gets a one-time 8-character alphanumeric code
   3. We POST that code + a generated deviceID to /token/json/2/device/new → device token (permanent JWT)
   4. We POST to /token/json/2/user/new with device token → user token (24h JWT)
@@ -43,7 +43,7 @@ from .transport import Transport
 AUTH_HOST = "https://my.remarkable.com"
 SERVICE_MANAGER_HOST = "https://service-manager-production-dot-remarkable-production.appspot.com"
 DEVICE_DESC = "desktop-linux"
-REGISTRATION_URL = "https://my.remarkable.com/connect/desktop"
+REGISTRATION_URL = "https://my.remarkable.com/device/desktop/connect"
 
 DEFAULT_TOKEN_PATH = Path.home() / ".rm_bridge" / "tokens.json"
 
@@ -53,7 +53,7 @@ class ConnectTransport(Transport):
 
     Usage — first-time setup:
         transport = ConnectTransport()
-        transport.register("abc12345")   # code from my.remarkable.com/connect/desktop
+        transport.register("abc12345")   # code from my.remarkable.com/device/desktop/connect
         transport.connect()
 
     Usage — subsequent sessions:

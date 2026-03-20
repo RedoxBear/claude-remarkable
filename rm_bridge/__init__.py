@@ -12,7 +12,7 @@ Quick start:
     # Remarkable Connect (cloud, first-time setup)
     from rm_bridge import ReMarkable
     rm = ReMarkable.from_connect()
-    rm.register("abc12345")   # one-time code from my.remarkable.com/connect/desktop
+    rm.register("abc12345")   # one-time code from my.remarkable.com/device/desktop/connect
     with rm:
         docs = rm.list_documents()
 
