@@ -68,4 +68,4 @@ finally:
 
 ## Linked Commits
 
-- Bug fix applied: _(tag: v0.1.1 — to be created after tests pass)_
+- Bug fix applied: `0cb0f06` (tag: `v0.1.1`)
