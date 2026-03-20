@@ -93,23 +93,20 @@ class TestListDocuments:
 # ------------------------------------------------------------------
 
 class TestPushPdf:
+    def _ok_exec(self):
+        """Return a mock exec_command that reports no errors."""
+        return (MagicMock(), MagicMock(read=lambda: b""), MagicMock(read=lambda: b""))
+
     def test_push_creates_four_files(self, transport, tmp_path):
         pdf_path = tmp_path / "test.pdf"
-
-        # Create a minimal valid PDF
-        with open(pdf_path, "wb") as f:
-            f.write(b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n"
-                    b"xref\n0 2\n0000000000 65535 f\n0000000009 00000 n\n"
-                    b"trailer\n<< /Size 2 /Root 1 0 R >>\nstartxref\n9\n%%EOF\n")
+        pdf_path.write_bytes(b"%PDF-1.4\n%%EOF\n")
 
         written_paths = []
         def putfo(buf, path):
             written_paths.append(path)
 
         transport._sftp.putfo.side_effect = putfo
-        transport._client.exec_command.return_value = (
-            MagicMock(), MagicMock(read=lambda: b""), MagicMock(read=lambda: b"")
-        )
+        transport._client.exec_command.return_value = self._ok_exec()
 
         with patch("rm_bridge.ssh.PdfReader") as mock_reader:
             mock_reader.return_value.pages = [MagicMock(), MagicMock()]
@@ -119,14 +116,55 @@ class TestPushPdf:
         extensions = {p.split(".")[-1] for p in written_paths}
         assert extensions == {"pdf", "metadata", "content", "pagedata"}
 
+    def test_push_stops_then_restarts_xochitl(self, transport, tmp_path):
+        """Official docs require stop-before-write, restart-after."""
+        pdf_path = tmp_path / "test.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4\n%%EOF\n")
+
+        transport._sftp.putfo.return_value = None
+        transport._client.exec_command.return_value = self._ok_exec()
+
+        commands = []
+        def capture_exec(cmd):
+            commands.append(cmd)
+            return self._ok_exec()
+        transport._client.exec_command.side_effect = capture_exec
+
+        with patch("rm_bridge.ssh.PdfReader") as mock_reader:
+            mock_reader.return_value.pages = [MagicMock()]
+            transport.push_pdf(pdf_path)
+
+        assert any("stop" in c for c in commands), "xochitl must be stopped before write"
+        assert any("restart" in c for c in commands), "xochitl must be restarted after write"
+        stop_idx = next(i for i, c in enumerate(commands) if "stop" in c)
+        restart_idx = next(i for i, c in enumerate(commands) if "restart" in c)
+        assert stop_idx < restart_idx, "stop must happen before restart"
+
+    def test_push_restarts_xochitl_even_on_write_failure(self, transport, tmp_path):
+        """xochitl must always be restarted — a stopped device shows a blank screen."""
+        pdf_path = tmp_path / "test.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4\n%%EOF\n")
+
+        commands = []
+        def capture_exec(cmd):
+            commands.append(cmd)
+            return self._ok_exec()
+        transport._client.exec_command.side_effect = capture_exec
+        transport._sftp.putfo.side_effect = OSError("SFTP write failed")
+
+        with patch("rm_bridge.ssh.PdfReader") as mock_reader:
+            mock_reader.return_value.pages = [MagicMock()]
+            with pytest.raises(OSError):
+                transport.push_pdf(pdf_path)
+
+        assert any("restart" in c for c in commands), "xochitl must restart even after failed write"
+
     def test_push_uses_filename_as_default_title(self, transport, tmp_path):
         pdf_path = tmp_path / "my_paper.pdf"
         pdf_path.write_bytes(b"%PDF-1.4\n%%EOF\n")
 
         transport._sftp.putfo.return_value = None
-        transport._client.exec_command.return_value = (
-            MagicMock(), MagicMock(read=lambda: b""), MagicMock(read=lambda: b"")
-        )
+        transport._client.exec_command.return_value = self._ok_exec()
 
         with patch("rm_bridge.ssh.PdfReader") as mock_reader:
             mock_reader.return_value.pages = [MagicMock()]
@@ -200,21 +238,34 @@ class TestPullAnnotations:
 # restart_xochitl
 # ------------------------------------------------------------------
 
-class TestRestartXochitl:
-    def test_restart_calls_systemctl(self, transport):
-        transport._client.exec_command.return_value = (
-            MagicMock(), MagicMock(read=lambda: b""), MagicMock(read=lambda: b"")
-        )
+class TestXochitlControl:
+    def _ok(self):
+        return (MagicMock(), MagicMock(read=lambda: b""), MagicMock(read=lambda: b""))
+
+    def test_stop_calls_systemctl_stop(self, transport):
+        transport._client.exec_command.return_value = self._ok()
+        transport.stop_xochitl()
+        cmd = transport._client.exec_command.call_args[0][0]
+        assert "xochitl" in cmd
+        assert "stop" in cmd
+
+    def test_restart_calls_systemctl_restart(self, transport):
+        transport._client.exec_command.return_value = self._ok()
         transport.restart_xochitl()
         cmd = transport._client.exec_command.call_args[0][0]
         assert "xochitl" in cmd
         assert "restart" in cmd
 
+    def test_stop_raises_on_stderr(self, transport):
+        transport._client.exec_command.return_value = (
+            MagicMock(), MagicMock(read=lambda: b""), MagicMock(read=lambda: b"Error: unit not found"),
+        )
+        with pytest.raises(RuntimeError, match="xochitl stop failed"):
+            transport.stop_xochitl()
+
     def test_restart_raises_on_stderr(self, transport):
         transport._client.exec_command.return_value = (
-            MagicMock(),
-            MagicMock(read=lambda: b""),
-            MagicMock(read=lambda: b"Error: unit not found"),
+            MagicMock(), MagicMock(read=lambda: b""), MagicMock(read=lambda: b"Error: unit not found"),
         )
         with pytest.raises(RuntimeError, match="xochitl restart failed"):
             transport.restart_xochitl()

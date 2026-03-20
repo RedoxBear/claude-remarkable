@@ -171,11 +171,14 @@ class SSHTransport(Transport):
     def push_pdf(self, path: Path, title: str | None = None, parent_id: str = "") -> Document:
         """Push a PDF to the device and return the resulting Document.
 
+        Per official reMarkable documentation: xochitl must NOT be running
+        while files are written. We stop it, write atomically, then restart.
+
         Steps:
-          1. Generate UUID
-          2. Count pages (pypdf)
+          1. Generate UUID and count pages
+          2. Stop xochitl
           3. SFTP-put .pdf, .metadata, .content, .pagedata
-          4. Restart xochitl so the device UI picks up the new document
+          4. Restart xochitl (always — even on write failure)
         """
         path = Path(path)
         if not path.exists():
@@ -184,22 +187,22 @@ class SSHTransport(Transport):
         doc_title = title or path.stem
         doc_uuid = generate_uuid()
 
-        # Count pages
         reader = PdfReader(str(path))
         page_count = len(reader.pages)
 
-        # Build companion files
         meta = DocumentMetadata(visible_name=doc_title, parent=parent_id)
         content = DocumentContent(file_type="pdf", page_count=page_count)
         pagedata = build_pagedata(page_count)
 
-        # Upload
-        self._write_bytes(self._doc_path(f"{doc_uuid}.pdf"), path.read_bytes())
-        self._write_text(self._doc_path(f"{doc_uuid}.metadata"), meta.to_json())
-        self._write_text(self._doc_path(f"{doc_uuid}.content"), content.to_json())
-        self._write_text(self._doc_path(f"{doc_uuid}.pagedata"), pagedata)
-
-        self.restart_xochitl()
+        self.stop_xochitl()
+        try:
+            self._write_bytes(self._doc_path(f"{doc_uuid}.pdf"), path.read_bytes())
+            self._write_text(self._doc_path(f"{doc_uuid}.metadata"), meta.to_json())
+            self._write_text(self._doc_path(f"{doc_uuid}.content"), content.to_json())
+            self._write_text(self._doc_path(f"{doc_uuid}.pagedata"), pagedata)
+        finally:
+            # Always restart — a stopped xochitl is a blank screen on the device
+            self.restart_xochitl()
 
         return metadata_to_document(doc_uuid, meta, content)
 
@@ -238,16 +241,31 @@ class SSHTransport(Transport):
 
         return result
 
+    def stop_xochitl(self) -> None:
+        """Stop the xochitl UI process before writing document files.
+
+        Required by official reMarkable documentation: xochitl must not be
+        running when the document store is modified.
+        """
+        _, stderr = self._run("systemctl stop xochitl")
+        if stderr and "Warning" not in stderr:
+            raise RuntimeError(f"xochitl stop failed: {stderr.strip()}")
+
     def restart_xochitl(self) -> None:
-        """Restart the xochitl UI process so it picks up new documents."""
-        stdout, stderr = self._run("systemctl restart xochitl")
+        """Restart xochitl after document writes are complete."""
+        _, stderr = self._run("systemctl restart xochitl")
         if stderr and "Warning" not in stderr:
             raise RuntimeError(f"xochitl restart failed: {stderr.strip()}")
 
     def device_info(self) -> dict[str, str]:
-        """Return basic device info for diagnostics."""
-        stdout, _ = self._run("cat /sys/devices/soc0/serial_number 2>/dev/null || echo unknown")
-        serial = stdout.strip()
-        fw_stdout, _ = self._run("cat /etc/version 2>/dev/null || echo unknown")
-        firmware = fw_stdout.strip()
-        return {"serial": serial, "firmware": firmware, "host": self._host}
+        """Return device serial, OS version, and firmware (official detection method)."""
+        serial_out, _ = self._run("cat /sys/devices/soc0/serial_number 2>/dev/null || echo unknown")
+        # Official method per developer.remarkable.com/documentation/sdk
+        version_out, _ = self._run("cat /etc/os-release 2>/dev/null | grep ^VERSION= || echo unknown")
+        config_out, _ = self._run("cat /home/root/.config/remarkable/xochitl.conf 2>/dev/null | head -5 || echo ''")
+        return {
+            "serial": serial_out.strip(),
+            "os_version": version_out.strip().removeprefix("VERSION=").strip('"'),
+            "host": self._host,
+            "xochitl_conf_preview": config_out.strip(),
+        }
