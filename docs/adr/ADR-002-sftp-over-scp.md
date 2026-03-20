@@ -56,4 +56,4 @@ SFTP lets us list the xochitl directory, read `.metadata` files, push the PDF + 
 
 ## Linked Commits
 
-- Phase 1 implementation: _(tag: v0.1.0 — to be created after tests pass)_
+- Phase 1 implementation: `2dce608` (tag: `v0.1.0`)
