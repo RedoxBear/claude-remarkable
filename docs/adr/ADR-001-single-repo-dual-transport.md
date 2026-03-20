@@ -67,4 +67,4 @@ The MCP server lives in the same repo (not a separate package) to keep the proje
 
 ## Linked Commits
 
-- Initial scaffold: _(tag: v0.0.1-scaffold — to be created after first commit)_
+- Initial scaffold: `2480f21` (tag: `v0.0.1-scaffold`)
