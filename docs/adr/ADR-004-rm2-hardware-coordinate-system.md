@@ -100,4 +100,4 @@ This explains why Mac users need HoRNDIS for USB SSH. Documented in README.
 
 ## Linked Commits
 
-- ADR written: _(tag: v0.1.2 — to be created with this commit)_
+- ADR written: `ffd48bf` (tag: `v0.1.2`)
