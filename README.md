@@ -23,8 +23,9 @@ Works over **USB SSH**, **WiFi SSH**, or **reMarkable Connect** (cloud subscript
    - [Connect commands](#connect-commands)
 7. [Step 4 — Using the Python API](#step-4--using-the-python-api)
 8. [reMarkable Connect (cloud)](#remarkable-connect-cloud)
-9. [Troubleshooting](#troubleshooting)
-10. [Project status](#project-status)
+9. [MCP Server (Claude Code integration)](#mcp-server-claude-code-integration)
+10. [Troubleshooting](#troubleshooting)
+11. [Project status](#project-status)
 
 ---
 
@@ -36,7 +37,7 @@ Works over **USB SSH**, **WiFi SSH**, or **reMarkable Connect** (cloud subscript
 | Push PDF to device | ✅ | ✅ |
 | Pull original PDF | ✅ | ✅ |
 | Pull annotation strokes (.rm) | ✅ | ✅ |
-| Render annotations onto PDF | ⏳ Phase 2 | ⏳ Phase 2 |
+| Render annotations onto PDF | ✅ | ❌ (SSH only) |
 | Works without internet | ✅ | ❌ |
 | Works without USB cable | ✅ (WiFi) | ✅ |
 
@@ -489,6 +490,54 @@ from rm_bridge import ReMarkable
 with ReMarkable.from_connect(token_path=Path("~/.rm_bridge/work_tokens.json").expanduser()) as rm:
     docs = rm.list_documents()
 ```
+
+---
+
+## MCP Server (Claude Code integration)
+
+`claude-remarkable` bundles an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server so that Claude Code can interact with your reMarkable 2 directly — listing documents, pushing PDFs, pulling and rendering annotations, and uploading to Miro, all via natural language.
+
+> **Status:** Phase 3 (planned). The server entry point is `rm-bridge-mcp`. See [docs/adr/ADR-007-mcp-tool-surface.md](docs/adr/ADR-007-mcp-tool-surface.md) for the full tool specification.
+
+### What it exposes
+
+| Tool | What it does |
+|------|-------------|
+| `list_documents` | List all documents on the device |
+| `push_pdf` | Push a local PDF to the device |
+| `pull_document` | Pull a document back as a local file |
+| `render_document` | Render annotations onto the original PDF and save locally |
+| `device_info` | Return device serial number, OS version, and connection info |
+| `push_to_miro` | Render annotations and upload each page as an image to a Miro board |
+
+### Connect Claude Code to your reMarkable
+
+Once Phase 3 is shipped, add this to your Claude Code MCP config (`~/.claude/mcp_settings.json` or via `claude mcp add`):
+
+```json
+{
+  "mcpServers": {
+    "remarkable": {
+      "command": "rm-bridge-mcp"
+    }
+  }
+}
+```
+
+The server reads `~/.rm_bridge/config.json` at startup (see [Config](#remarkable-connect-cloud) for the schema). No per-call arguments are needed.
+
+For Miro upload, set the environment variable before starting Claude Code:
+
+```bash
+export MIRO_ACCESS_TOKEN=your_token_here
+```
+
+### MCP protocol documentation
+
+The server is built with the official [Python MCP SDK](https://github.com/modelcontextprotocol/python-sdk) (`mcp` v1.26.0+) using the FastMCP high-level API.
+
+- How MCP servers work: [modelcontextprotocol.io/docs/develop/build-server](https://modelcontextprotocol.io/docs/develop/build-server)
+- How MCP clients connect: [modelcontextprotocol.io/docs/develop/build-client](https://modelcontextprotocol.io/docs/develop/build-client)
 
 ---
 
