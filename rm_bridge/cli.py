@@ -80,6 +80,21 @@ def ssh_pull(uuid: str, out: str | None, host: str, key: str | None, password: s
     click.echo(f"Saved {len(data):,} bytes → {dest}")
 
 
+@ssh.command("render")
+@click.argument("uuid")
+@click.option("--out", default=None, help="Output file path (defaults to <uuid>-annotated.pdf).")
+@click.option("--host", default="10.11.99.1", show_default=True)
+@click.option("--key", default=None)
+@click.option("--password", default=None)
+def ssh_render(uuid: str, out: str | None, host: str, key: str | None, password: str | None) -> None:
+    """Pull a document and render its annotations onto the PDF."""
+    with _ssh_rm(host, key, password) as rm:
+        data = rm.render_document(uuid)
+    dest = Path(out or f"{uuid}-annotated.pdf")
+    dest.write_bytes(data)
+    click.echo(f"Saved annotated PDF ({len(data):,} bytes) → {dest}")
+
+
 @ssh.command("info")
 @click.option("--host", default="10.11.99.1", show_default=True)
 @click.option("--key", default=None)

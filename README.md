@@ -321,6 +321,18 @@ rm-bridge ssh push my_paper.pdf --title "Q1 Research"
 
 > The device screen will go blank briefly while xochitl (the reMarkable UI) restarts. This is normal — it takes 5–10 seconds.
 
+**Render annotations onto the original PDF:**
+
+```bash
+rm-bridge ssh render 3f4a1b2c-...
+```
+
+Pulls the original PDF and all annotation strokes, renders them as an overlay, and saves the result as `<uuid>-annotated.pdf`. Set a custom output path:
+
+```bash
+rm-bridge ssh render 3f4a1b2c-... --out reviewed_paper.pdf
+```
+
 **Pull a document back (by UUID):**
 
 ```bash
@@ -422,10 +434,10 @@ with ReMarkable.over_ssh(host="10.11.99.1") as rm:
     with open("pulled.pdf", "wb") as f:
         f.write(pdf_bytes)
 
-    # Pull raw annotation strokes (Phase 2: these will be rendered)
-    annotations = rm.pull_annotations(doc.uuid)
-    for page, rm_bytes in annotations.items():
-        print(f"Page {page}: {len(rm_bytes)} bytes of stroke data")
+    # Render annotations onto the original PDF (pull + render in one call)
+    merged_pdf = rm.render_document(doc.uuid)
+    with open("annotated.pdf", "wb") as f:
+        f.write(merged_pdf)
 ```
 
 ### reMarkable Connect
@@ -568,7 +580,7 @@ rm-bridge connect register <new-code>
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | SSH transport + reMarkable Connect auth | ✅ Complete (`v0.1.1`) |
-| 2 | Pull annotation strokes + render onto PDF | ⏳ Planned |
+| 2 | Pull annotation strokes + render onto PDF | ✅ Complete (`v0.2.0`) |
 | 3 | MCP server (Claude integration) | ⏳ Planned |
 | 4 | GitHub release + pip publish | ⏳ Planned |
 

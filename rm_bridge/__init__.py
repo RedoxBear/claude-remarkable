@@ -26,6 +26,7 @@ from pathlib import Path
 
 from .connect import ConnectTransport
 from .documents import Document
+from .render import overlay_annotations
 from .ssh import SSHTransport
 from .transport import Transport
 
@@ -117,6 +118,32 @@ class ReMarkable:
     def pull_annotations(self, uuid: str) -> dict[str, bytes]:
         """Pull raw .rm annotation bytes keyed by page number."""
         return self._transport.pull_annotations(uuid)
+
+    def render_document(self, uuid: str) -> bytes:
+        """Pull, render annotations, and return a merged PDF.
+
+        Convenience method that combines:
+          pull_document → pull_annotations → (pull_content for page order)
+          → overlay_annotations → merged PDF bytes
+
+        Works with both SSH and Connect transports.
+        """
+        original_pdf = self._transport.pull_document(uuid)
+        annotations = self._transport.pull_annotations(uuid)
+
+        if not annotations:
+            return original_pdf  # No annotations — return original unchanged
+
+        # Get page order for correct annotation-to-page mapping
+        page_order: list[str] | None = None
+        if isinstance(self._transport, SSHTransport):
+            try:
+                content = self._transport.pull_content(uuid)
+                page_order = content.pages
+            except FileNotFoundError:
+                pass  # Fall back to integer-indexed keys
+
+        return overlay_annotations(original_pdf, annotations, page_order)
 
     # SSH-only convenience
     def device_info(self) -> dict[str, str]:

@@ -206,6 +206,11 @@ class SSHTransport(Transport):
 
         return metadata_to_document(doc_uuid, meta, content)
 
+    def pull_content(self, uuid: str) -> DocumentContent:
+        """Return the DocumentContent (page order) for a document UUID."""
+        raw = self._read_file(self._doc_path(f"{uuid}.content"))
+        return DocumentContent.from_json(raw)
+
     def pull_document(self, uuid: str) -> bytes:
         """Return the original PDF bytes for a document UUID."""
         for ext in (".pdf", ".epub"):
