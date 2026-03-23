@@ -97,4 +97,4 @@ page index → UUID correctly. Without it, falls back to integer string keys
 
 ## Linked Commits
 
-- Phase 2 implementation: _(tag: v0.2.0 — to be created after tests pass)_
+- Phase 2 implementation: `2214ba4` (tag: `v0.2.0`)
