@@ -44,7 +44,8 @@ Works over **USB SSH**, **WiFi SSH**, or **reMarkable Connect** (cloud subscript
 
 ## Requirements
 
-- Python 3.10 or later
+- Python **3.10 or later** (macOS ships with 3.9 — see installation steps below)
+- Git
 - reMarkable 2 tablet (firmware 3.x or later)
 - USB-C cable **or** WiFi network shared with your computer
 - For reMarkable Connect: an active Connect subscription
@@ -53,21 +54,123 @@ Works over **USB SSH**, **WiFi SSH**, or **reMarkable Connect** (cloud subscript
 
 ## Installation
 
+> **Note:** This package is not yet on PyPI. Install directly from GitHub using the steps below.
+
+### Mac
+
+**1. Check your Python version**
+
 ```bash
-pip install claude-remarkable
+python3 --version
 ```
 
-To install from source:
+If it shows `3.9.x` or lower, install a newer version via Homebrew:
+
+```bash
+# Install Homebrew if you don't have it
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Python 3.12
+brew install python@3.12
+```
+
+Confirm the new version is available:
+
+```bash
+python3.12 --version
+# Python 3.12.x
+```
+
+**2. Clone the repository**
 
 ```bash
 git clone https://github.com/RedoxBear/claude-remarkable
 cd claude-remarkable
-pip install -e ".[dev]"
 ```
 
-Verify the install:
+**3. Create a virtual environment**
 
 ```bash
+python3.12 -m venv .venv
+```
+
+**4. Activate the virtual environment**
+
+```bash
+source .venv/bin/activate
+```
+
+Your terminal prompt will change to show `(.venv)` — this means the environment is active. You need to run this activation command each time you open a new terminal.
+
+**5. Install the package**
+
+```bash
+pip install -e .
+```
+
+**6. Verify the install**
+
+```bash
+rm-bridge --version
+```
+
+You should see a version number. If you see `command not found`, make sure step 4 (activate) was run.
+
+---
+
+### Linux
+
+**1. Check your Python version**
+
+```bash
+python3 --version
+```
+
+If below 3.10, install via your package manager:
+
+```bash
+# Ubuntu / Debian
+sudo apt update && sudo apt install python3.12 python3.12-venv
+
+# Fedora
+sudo dnf install python3.12
+```
+
+**2. Clone and install**
+
+```bash
+git clone https://github.com/RedoxBear/claude-remarkable
+cd claude-remarkable
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+rm-bridge --version
+```
+
+---
+
+### Windows
+
+**1. Install Python 3.12**
+
+Download from [python.org/downloads](https://www.python.org/downloads/). During install, check **"Add Python to PATH"**.
+
+Confirm in a new Command Prompt:
+
+```cmd
+python --version
+```
+
+**2. Clone and install**
+
+Open Command Prompt or PowerShell:
+
+```cmd
+git clone https://github.com/RedoxBear/claude-remarkable
+cd claude-remarkable
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e .
 rm-bridge --version
 ```
 
@@ -378,6 +481,28 @@ with ReMarkable.from_connect(token_path=Path("~/.rm_bridge/work_tokens.json").ex
 ---
 
 ## Troubleshooting
+
+### "Could not find a version that satisfies the requirement claude-remarkable"
+
+The package is not on PyPI yet. Do not use `pip install claude-remarkable`. Follow the [Installation](#installation) steps above to install from GitHub.
+
+### "command not found: rm-bridge" after install
+
+The virtual environment is not active. Run:
+
+```bash
+# Mac / Linux
+source .venv/bin/activate
+
+# Windows
+.venv\Scripts\activate
+```
+
+Then try `rm-bridge --version` again.
+
+### "Python 3.9 / requires Python >=3.10"
+
+Your system Python is too old. Install Python 3.12 via Homebrew (Mac) or your package manager (Linux), then create the virtual environment with `python3.12 -m venv .venv`.
 
 ### Ping to 10.11.99.1 fails
 
