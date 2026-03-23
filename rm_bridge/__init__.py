@@ -27,7 +27,7 @@ from pathlib import Path
 from .connect import ConnectTransport
 from .documents import Document
 from .render import overlay_annotations
-from .ssh import SSHTransport
+from .ssh import SSHTransport  # re-exported for type-checking SSH-only methods
 from .transport import Transport
 
 __version__ = "0.1.0"
@@ -65,10 +65,6 @@ class ReMarkable:
         """Create a Remarkable Connect (cloud) backed instance."""
         return cls(ConnectTransport(token_path))
 
-    # Convenience: ReMarkable(host="10.11.99.1") → SSH
-    def __class_getitem__(cls, _):  # type: ignore[override]
-        return cls
-
     # ------------------------------------------------------------------
     # Registration (Connect only)
     # ------------------------------------------------------------------
@@ -84,10 +80,7 @@ class ReMarkable:
     # ------------------------------------------------------------------
 
     def connect(self) -> "ReMarkable":
-        if isinstance(self._transport, SSHTransport):
-            self._transport.connect()
-        elif isinstance(self._transport, ConnectTransport):
-            self._transport.connect()
+        self._transport.connect()
         return self
 
     def close(self) -> None:
@@ -136,12 +129,11 @@ class ReMarkable:
 
         # Get page order for correct annotation-to-page mapping
         page_order: list[str] | None = None
-        if isinstance(self._transport, SSHTransport):
-            try:
-                content = self._transport.pull_content(uuid)
-                page_order = content.pages
-            except FileNotFoundError:
-                pass  # Fall back to integer-indexed keys
+        try:
+            content = self._transport.pull_content(uuid)
+            page_order = content.pages
+        except (NotImplementedError, FileNotFoundError):
+            pass  # Fall back to integer-indexed keys
 
         return overlay_annotations(original_pdf, annotations, page_order)
 

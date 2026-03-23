@@ -16,7 +16,6 @@ dependencies = [
     "pypdf>=4.0",           # PDF read/write
     "reportlab>=4.1",       # PDF annotation overlay rendering
     "click>=8.1",           # CLI
-    "pydantic>=2.6",        # Config + data models
     "mcp>=1.0",             # MCP server protocol
 ]
 
@@ -31,6 +30,7 @@ dev = [
 
 [project.scripts]
 rm-bridge = "rm_bridge.cli:main"
+rm-bridge-mcp = "mcp_server.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["rm_bridge", "mcp_server"]

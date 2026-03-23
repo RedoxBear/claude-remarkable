@@ -190,6 +190,21 @@ class ConnectTransport(Transport):
     def _now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
+    def pull_content(self, uuid: str) -> "DocumentContent":
+        """Not supported by Connect transport.
+
+        The Remarkable cloud API does not expose page ordering separately from
+        the document blob. Annotation rendering for Connect falls back to
+        integer page index ordering (0, 1, 2 …), which is correct for most
+        documents but may be wrong for reordered pages.
+
+        Raises NotImplementedError — callers should catch this and fall back.
+        """
+        raise NotImplementedError(
+            "ConnectTransport does not support pull_content(). "
+            "Annotation rendering uses integer page index ordering."
+        )
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
