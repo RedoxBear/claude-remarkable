@@ -60,7 +60,7 @@ pip install claude-remarkable
 To install from source:
 
 ```bash
-git clone https://github.com/bdcl/claude-remarkable
+git clone https://github.com/RedoxBear/claude-remarkable
 cd claude-remarkable
 pip install -e ".[dev]"
 ```
